@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  preferences   UserPreferences?
+  translations  Translation[]
+  participants  ConversationParticipant[]
+  progress      LearningProgress[]
+  vocabulary    CustomVocabulary[]
+  refreshTokens RefreshToken[]
+}
+
+model UserPreferences {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signLanguage    String  @default("ASL")
+  voiceSpeed      Float   @default(1.0)
+  voicePitch      Float   @default(1.0)
+  voiceLanguage   String  @default("en-US")
+  theme           String  @default("system")
+  highContrast    Boolean @default(false)
+  largeText       Boolean @default(false)
+  reducedMotion   Boolean @default(false)
+  soundAlerts     Boolean @default(true)
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Translation {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type        String
+  input       String
+  output      String
+  confidence  Float?
+  language    String   @default("ASL")
+  createdAt   DateTime @default(now())
+}
+
+model Conversation {
+  id           String   @id @default(cuid())
+  title        String?
+  createdAt    DateTime @default(now())
+  endedAt      DateTime?
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderType     String
+  content        String
+  translatedTo   String?
+  confidence     Float?
+  createdAt      DateTime     @default(now())
+}
+
+model LearningProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  score       Int?
+  completed   Boolean   @default(false)
+  timeSpent   Int       @default(0)
+  attempts    Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, lessonId])
+}
+
+model CustomVocabulary {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word          String
+  pronunciation String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, word])
+}
+
+model Lesson {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  category    String
+  difficulty  String @default("beginner")
+  duration    Int
+  order       Int    @default(0)
+  content     String
+}
+
+model Sign {
+  id          String  @id @default(cuid())
+  gloss       String
+  language    String
+  category    String
+  description String
+  difficulty  String  @default("easy")
+  videoUrl    String?
+  imageUrl    String?
+
+  @@unique([gloss, language])
+}

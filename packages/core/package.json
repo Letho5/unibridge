@@ -1,0 +1,18 @@
+{
+  "name": "@unibridge/core",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./recognition": "./src/recognition/index.js",
+    "./speech": "./src/speech/index.js",
+    "./api": "./src/api/index.js"
+  },
+  "dependencies": {
+    "@mediapipe/hands": "^0.4.1675469240",
+    "@mediapipe/pose": "^0.5.1675469404",
+    "@tensorflow/tfjs": "^4.15.0",
+    "axios": "^1.6.2"
+  }
+}
