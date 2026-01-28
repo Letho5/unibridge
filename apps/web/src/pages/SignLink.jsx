@@ -1,14 +1,10 @@
 /* ============================================================
    🌉 UNIBRIDGE - SIGNLINK PAGE
-   Real-time Sign Language Recognition with MediaPipe Hands
+   Camera-based Sign Language Recognition
    ============================================================ */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Hands, HAND_CONNECTIONS } from '@mediapipe/hands';
-import { Camera } from '@mediapipe/camera_utils';
-import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
-import useSettingsStore from '../stores/settingsStore';
 
 /* ============================================
    🎨 ICON COMPONENTS
@@ -40,21 +36,19 @@ const Icons = {
     </svg>
   ),
 
-  FlipHorizontal: ({ className }) => (
+  AlertCircle: ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3" />
-      <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
-      <path d="M12 20v2" />
-      <path d="M12 14v2" />
-      <path d="M12 8v2" />
-      <path d="M12 2v2" />
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" x2="12" y1="8" y2="12" />
+      <line x1="12" x2="12.01" y1="16" y2="16" />
     </svg>
   ),
 
-  Settings: ({ className }) => (
+  Info: ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
     </svg>
   ),
 
@@ -70,8 +64,6 @@ const Icons = {
       <path d="M3 6h18" />
       <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
       <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-      <line x1="10" x2="10" y1="11" y2="17" />
-      <line x1="14" x2="14" y1="11" y2="17" />
     </svg>
   ),
 
@@ -83,74 +75,16 @@ const Icons = {
     </svg>
   ),
 
-  Check: ({ className }) => (
+  Sparkles: ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
+      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
     </svg>
   ),
 
-  AlertCircle: ({ className }) => (
+  X: ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" x2="12" y1="8" y2="12" />
-      <line x1="12" x2="12.01" y1="16" y2="16" />
-    </svg>
-  ),
-
-  Maximize: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-    </svg>
-  ),
-
-  Minimize: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 14h6v6" />
-      <path d="M20 10h-6V4" />
-      <path d="M14 10l7-7" />
-      <path d="M3 21l7-7" />
-    </svg>
-  ),
-
-  RefreshCw: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M8 16H3v5" />
-    </svg>
-  ),
-
-  Zap: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  ),
-
-  Info: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
-  ),
-
-  Eye: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-
-  EyeOff: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-      <line x1="2" x2="22" y1="2" y2="22" />
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   ),
 
@@ -167,56 +101,9 @@ const Icons = {
     </svg>
   ),
 
-  Square: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <rect x="4" y="4" width="16" height="16" rx="2" />
-    </svg>
-  ),
-
-  Play: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  ),
-
-  History: ({ className }) => (
+  Check: ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-      <path d="M3 3v5h5" />
-      <path d="M12 7v5l4 2" />
-    </svg>
-  ),
-
-  Delete: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-      <line x1="18" x2="12" y1="9" y2="15" />
-      <line x1="12" x2="18" y1="9" y2="15" />
-    </svg>
-  ),
-
-  Space: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 17H2a2 2 0 0 0 2-2V9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 0 2 2z" />
-    </svg>
-  ),
-
-  Plus: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" x2="12" y1="5" y2="19" />
-      <line x1="5" x2="19" y1="12" y2="12" />
-    </svg>
-  ),
-
-  ChevronDown: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  ),
-
-  ChevronUp: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m18 15-6-6-6 6" />
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
 };
@@ -245,419 +132,42 @@ const staggerContainer = {
   }
 };
 
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: { 
-    opacity: 1, 
-    scale: 1,
-    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
-  }
-};
-
 /* ============================================
-   🤟 ASL ALPHABET DETECTION
-   Simple rule-based detection using landmarks
+   🔤 ASL ALPHABET REFERENCE
    ============================================ */
 
-const ASL_ALPHABET = 'ABCDEFGHIKLMNOPQRSTUVWXY'.split('');
-
-// Helper function to calculate distance between two landmarks
-const getDistance = (p1, p2) => {
-  return Math.sqrt(
-    Math.pow(p1.x - p2.x, 2) + 
-    Math.pow(p1.y - p2.y, 2) + 
-    Math.pow(p1.z - p2.z, 2)
-  );
-};
-
-// Helper to check if finger is extended
-const isFingerExtended = (landmarks, fingerTip, fingerPip, fingerMcp) => {
-  const tipToPip = getDistance(landmarks[fingerTip], landmarks[fingerPip]);
-  const pipToMcp = getDistance(landmarks[fingerPip], landmarks[fingerMcp]);
-  return tipToPip > pipToMcp * 0.8;
-};
-
-// Helper to check if finger is curled
-const isFingerCurled = (landmarks, fingerTip, fingerPip, wrist) => {
-  const tipToWrist = getDistance(landmarks[fingerTip], landmarks[wrist]);
-  const pipToWrist = getDistance(landmarks[fingerPip], landmarks[wrist]);
-  return tipToWrist < pipToWrist * 1.2;
-};
-
-// Detect ASL letter from hand landmarks
-const detectASLSign = (landmarks) => {
-  if (!landmarks || landmarks.length < 21) return null;
-
-  // Landmark indices
-  const WRIST = 0;
-  const THUMB_TIP = 4;
-  const THUMB_IP = 3;
-  const THUMB_MCP = 2;
-  const INDEX_TIP = 8;
-  const INDEX_PIP = 6;
-  const INDEX_MCP = 5;
-  const MIDDLE_TIP = 12;
-  const MIDDLE_PIP = 10;
-  const MIDDLE_MCP = 9;
-  const RING_TIP = 16;
-  const RING_PIP = 14;
-  const RING_MCP = 13;
-  const PINKY_TIP = 20;
-  const PINKY_PIP = 18;
-  const PINKY_MCP = 17;
-
-  // Check finger states
-  const indexExtended = isFingerExtended(landmarks, INDEX_TIP, INDEX_PIP, INDEX_MCP);
-  const middleExtended = isFingerExtended(landmarks, MIDDLE_TIP, MIDDLE_PIP, MIDDLE_MCP);
-  const ringExtended = isFingerExtended(landmarks, RING_TIP, RING_PIP, RING_MCP);
-  const pinkyExtended = isFingerExtended(landmarks, PINKY_TIP, PINKY_PIP, PINKY_MCP);
-
-  const indexCurled = isFingerCurled(landmarks, INDEX_TIP, INDEX_PIP, WRIST);
-  const middleCurled = isFingerCurled(landmarks, MIDDLE_TIP, MIDDLE_PIP, WRIST);
-  const ringCurled = isFingerCurled(landmarks, RING_TIP, RING_PIP, WRIST);
-  const pinkyCurled = isFingerCurled(landmarks, PINKY_TIP, PINKY_PIP, WRIST);
-
-  const thumbExtended = getDistance(landmarks[THUMB_TIP], landmarks[WRIST]) > 
-                       getDistance(landmarks[INDEX_MCP], landmarks[WRIST]) * 0.8;
-
-  // Detect specific signs
-
-  // V - Peace sign (index and middle extended, others curled)
-  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
-    const fingerSpread = Math.abs(landmarks[INDEX_TIP].x - landmarks[MIDDLE_TIP].x) > 0.04;
-    if (fingerSpread) {
-      return { letter: 'V', confidence: 0.9 };
-    }
-  }
-
-  // W - Three fingers extended (index, middle, ring)
-  if (indexExtended && middleExtended && ringExtended && !pinkyExtended) {
-    return { letter: 'W', confidence: 0.85 };
-  }
-
-  // L - Index extended, thumb out perpendicular
-  if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended && thumbExtended) {
-    const thumbAngle = Math.abs(landmarks[THUMB_TIP].x - landmarks[INDEX_TIP].x);
-    if (thumbAngle > 0.1) {
-      return { letter: 'L', confidence: 0.85 };
-    }
-  }
-
-  // I - Only pinky extended
-  if (!indexExtended && !middleExtended && !ringExtended && pinkyExtended) {
-    return { letter: 'I', confidence: 0.85 };
-  }
-
-  // Y - Thumb and pinky extended, others curled
-  if (!indexExtended && !middleExtended && !ringExtended && pinkyExtended && thumbExtended) {
-    return { letter: 'Y', confidence: 0.8 };
-  }
-
-  // B - All four fingers extended and together, thumb tucked
-  if (indexExtended && middleExtended && ringExtended && pinkyExtended) {
-    const fingersClose = Math.abs(landmarks[INDEX_TIP].x - landmarks[PINKY_TIP].x) < 0.08;
-    if (fingersClose && !thumbExtended) {
-      return { letter: 'B', confidence: 0.8 };
-    }
-  }
-
-  // A - Fist with thumb to the side
-  if (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbToSide = landmarks[THUMB_TIP].y > landmarks[INDEX_PIP].y;
-    if (thumbToSide && thumbExtended) {
-      return { letter: 'A', confidence: 0.75 };
-    }
-  }
-
-  // S - Fist with thumb over fingers
-  if (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbOverFingers = landmarks[THUMB_TIP].y < landmarks[INDEX_PIP].y;
-    if (thumbOverFingers) {
-      return { letter: 'S', confidence: 0.75 };
-    }
-  }
-
-  // E - Fingers curled, thumb across
-  if (indexCurled && middleCurled && ringCurled && pinkyCurled) {
-    return { letter: 'E', confidence: 0.7 };
-  }
-
-  // O - Fingers and thumb form circle
-  const thumbToIndex = getDistance(landmarks[THUMB_TIP], landmarks[INDEX_TIP]);
-  if (thumbToIndex < 0.06 && !middleExtended && !ringExtended && !pinkyExtended) {
-    return { letter: 'O', confidence: 0.75 };
-  }
-
-  // C - Curved hand shape (like holding a cup)
-  if (!indexCurled && !middleCurled && !ringCurled && !pinkyCurled) {
-    const curvedShape = getDistance(landmarks[THUMB_TIP], landmarks[PINKY_TIP]) > 0.1 &&
-                       getDistance(landmarks[THUMB_TIP], landmarks[PINKY_TIP]) < 0.2;
-    if (curvedShape) {
-      return { letter: 'C', confidence: 0.7 };
-    }
-  }
-
-  // D - Index pointing up, others form circle with thumb
-  if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbToMiddle = getDistance(landmarks[THUMB_TIP], landmarks[MIDDLE_TIP]);
-    if (thumbToMiddle < 0.08) {
-      return { letter: 'D', confidence: 0.75 };
-    }
-  }
-
-  // F - Index and thumb touching, others extended
-  if (middleExtended && ringExtended && pinkyExtended) {
-    const thumbToIndexTouch = getDistance(landmarks[THUMB_TIP], landmarks[INDEX_TIP]) < 0.05;
-    if (thumbToIndexTouch) {
-      return { letter: 'F', confidence: 0.8 };
-    }
-  }
-
-  // G - Index pointing sideways, thumb parallel
-  if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const pointingSide = Math.abs(landmarks[INDEX_TIP].y - landmarks[INDEX_MCP].y) < 0.05;
-    if (pointingSide) {
-      return { letter: 'G', confidence: 0.7 };
-    }
-  }
-
-  // H - Index and middle pointing sideways
-  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
-    const pointingSide = Math.abs(landmarks[INDEX_TIP].y - landmarks[INDEX_MCP].y) < 0.05;
-    if (pointingSide) {
-      return { letter: 'H', confidence: 0.7 };
-    }
-  }
-
-  // K - Index and middle up in V, thumb between them
-  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbBetween = landmarks[THUMB_TIP].x > Math.min(landmarks[INDEX_TIP].x, landmarks[MIDDLE_TIP].x) && 
-                        landmarks[THUMB_TIP].x < Math.max(landmarks[INDEX_TIP].x, landmarks[MIDDLE_TIP].x);
-    if (thumbBetween) {
-      return { letter: 'K', confidence: 0.7 };
-    }
-  }
-
-  // M - Thumb under three fingers
-  if (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbUnder = landmarks[THUMB_TIP].y > landmarks[RING_MCP].y;
-    if (thumbUnder) {
-      return { letter: 'M', confidence: 0.65 };
-    }
-  }
-
-  // N - Thumb under two fingers
-  if (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbUnder = landmarks[THUMB_TIP].y > landmarks[MIDDLE_MCP].y &&
-                      landmarks[THUMB_TIP].y < landmarks[RING_MCP].y;
-    if (thumbUnder) {
-      return { letter: 'N', confidence: 0.65 };
-    }
-  }
-
-  // P - Like K but pointing down
-  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
-    const pointingDown = landmarks[INDEX_TIP].y > landmarks[INDEX_MCP].y;
-    if (pointingDown) {
-      return { letter: 'P', confidence: 0.7 };
-    }
-  }
-
-  // Q - Like G but pointing down
-  if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const pointingDown = landmarks[INDEX_TIP].y > landmarks[INDEX_MCP].y;
-    if (pointingDown && thumbExtended) {
-      return { letter: 'Q', confidence: 0.7 };
-    }
-  }
-
-  // R - Index and middle crossed
-  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
-    const fingersCrossed = Math.abs(landmarks[INDEX_TIP].x - landmarks[MIDDLE_TIP].x) < 0.025;
-    if (fingersCrossed) {
-      return { letter: 'R', confidence: 0.75 };
-    }
-  }
-
-  // T - Thumb between index and middle
-  if (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbBetween = landmarks[THUMB_TIP].x > landmarks[INDEX_MCP].x &&
-                        landmarks[THUMB_TIP].x < landmarks[MIDDLE_MCP].x;
-    if (thumbBetween) {
-      return { letter: 'T', confidence: 0.65 };
-    }
-  }
-
-  // U - Index and middle together, pointing up
-  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
-    const fingersTogether = Math.abs(landmarks[INDEX_TIP].x - landmarks[MIDDLE_TIP].x) < 0.03;
-    if (fingersTogether) {
-      return { letter: 'U', confidence: 0.75 };
-    }
-  }
-
-  // X - Index bent at hook
-  if (!middleExtended && !ringExtended && !pinkyExtended) {
-    const indexBent = landmarks[INDEX_TIP].y > landmarks[INDEX_PIP].y &&
-                     landmarks[INDEX_PIP].y < landmarks[INDEX_MCP].y;
-    if (indexBent) {
-      return { letter: 'X', confidence: 0.7 };
-    }
-  }
-
-  return null;
-};
+const ASL_ALPHABET = [
+  { letter: 'A', description: 'Fist with thumb beside' },
+  { letter: 'B', description: 'Flat hand, thumb tucked' },
+  { letter: 'C', description: 'Curved hand like holding a cup' },
+  { letter: 'D', description: 'Index up, others touch thumb' },
+  { letter: 'E', description: 'Fingers curled, thumb tucked' },
+  { letter: 'F', description: 'OK sign with three fingers up' },
+  { letter: 'G', description: 'Pointer and thumb out, sideways' },
+  { letter: 'H', description: 'Two fingers out sideways' },
+  { letter: 'I', description: 'Pinky up only' },
+  { letter: 'J', description: 'Pinky traces J shape' },
+  { letter: 'K', description: 'Two fingers up, thumb between' },
+  { letter: 'L', description: 'L shape with thumb and index' },
+  { letter: 'M', description: 'Three fingers over thumb' },
+  { letter: 'N', description: 'Two fingers over thumb' },
+  { letter: 'O', description: 'Fingers touch thumb in O shape' },
+  { letter: 'P', description: 'K sign pointing down' },
+  { letter: 'Q', description: 'G sign pointing down' },
+  { letter: 'R', description: 'Crossed fingers' },
+  { letter: 'S', description: 'Fist with thumb over fingers' },
+  { letter: 'T', description: 'Thumb between index and middle' },
+  { letter: 'U', description: 'Two fingers up together' },
+  { letter: 'V', description: 'Peace sign' },
+  { letter: 'W', description: 'Three fingers up' },
+  { letter: 'X', description: 'Index finger hooked' },
+  { letter: 'Y', description: 'Thumb and pinky out' },
+  { letter: 'Z', description: 'Index traces Z shape' },
+];
 
 /* ============================================
    🧩 SUB-COMPONENTS
    ============================================ */
-
-// Status Badge Component
-const StatusBadge = ({ status, message }) => {
-  const statusConfig = {
-    idle: {
-      bg: 'bg-slate-100 dark:bg-slate-800',
-      text: 'text-slate-600 dark:text-slate-400',
-      dot: 'bg-slate-400',
-    },
-    loading: {
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-      text: 'text-amber-600 dark:text-amber-400',
-      dot: 'bg-amber-500',
-      pulse: true,
-    },
-    active: {
-      bg: 'bg-teal-100 dark:bg-teal-900/30',
-      text: 'text-teal-600 dark:text-teal-400',
-      dot: 'bg-teal-500',
-      pulse: true,
-    },
-    detecting: {
-      bg: 'bg-purple-100 dark:bg-purple-900/30',
-      text: 'text-purple-600 dark:text-purple-400',
-      dot: 'bg-purple-500',
-      pulse: true,
-    },
-    error: {
-      bg: 'bg-red-100 dark:bg-red-900/30',
-      text: 'text-red-600 dark:text-red-400',
-      dot: 'bg-red-500',
-    },
-    success: {
-      bg: 'bg-green-100 dark:bg-green-900/30',
-      text: 'text-green-600 dark:text-green-400',
-      dot: 'bg-green-500',
-    },
-  };
-
-  const config = statusConfig[status] || statusConfig.idle;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${config.bg} ${config.text}`}
-    >
-      <span className="relative flex h-2 w-2">
-        {config.pulse && (
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.dot} opacity-75`} />
-        )}
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${config.dot}`} />
-      </span>
-      {message}
-    </motion.div>
-  );
-};
-
-// Hand Indicator
-const HandIndicator = ({ detected, side }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: detected ? 1 : 0.3 }}
-    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-      detected 
-        ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' 
-        : 'bg-slate-100 dark:bg-dark-800 text-slate-400 dark:text-slate-500'
-    }`}
-  >
-    <Icons.Hand className={`w-4 h-4 ${side === 'left' ? 'scale-x-[-1]' : ''}`} />
-    <span className="text-xs font-medium capitalize">{side}</span>
-    {detected && (
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        className="w-2 h-2 rounded-full bg-teal-500"
-      />
-    )}
-  </motion.div>
-);
-
-// Action Button Component
-const ActionButton = ({ onClick, icon: Icon, label, variant = 'secondary', size = 'md', disabled = false, loading = false, active = false }) => {
-  const variants = {
-    primary: 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-500/30 hover:shadow-xl hover:shadow-teal-500/40',
-    secondary: 'bg-slate-100 dark:bg-dark-800 hover:bg-slate-200 dark:hover:bg-dark-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700',
-    danger: 'bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400',
-    ghost: 'hover:bg-slate-100 dark:hover:bg-dark-800 text-slate-600 dark:text-slate-400',
-  };
-
-  const sizes = {
-    sm: 'p-2',
-    md: 'p-3',
-    lg: 'p-4',
-  };
-
-  return (
-    <motion.button
-      whileHover={{ scale: disabled ? 1 : 1.05 }}
-      whileTap={{ scale: disabled ? 1 : 0.95 }}
-      onClick={onClick}
-      disabled={disabled || loading}
-      className={`
-        ${active ? variants.primary : variants[variant]} ${sizes[size]}
-        rounded-xl transition-all duration-200
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2
-        disabled:opacity-50 disabled:cursor-not-allowed
-        relative
-      `}
-      aria-label={label}
-      title={label}
-    >
-      {loading ? (
-        <Icons.Loader className="w-5 h-5 animate-spin" />
-      ) : (
-        <Icon className="w-5 h-5" />
-      )}
-    </motion.button>
-  );
-};
-
-// Toggle Switch
-const ToggleSwitch = ({ checked, onChange, label, description }) => (
-  <label className="flex items-center justify-between cursor-pointer group">
-    <div>
-      <div className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-        {label}
-      </div>
-      {description && (
-        <div className="text-xs text-slate-500 dark:text-slate-500">
-          {description}
-        </div>
-      )}
-    </div>
-    <div className="relative ml-4">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="sr-only"
-      />
-      <div className={`w-11 h-6 rounded-full transition-colors ${checked ? 'bg-teal-500' : 'bg-slate-300 dark:bg-dark-600'}`}>
-        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${checked ? 'translate-x-5' : ''}`} />
-      </div>
-    </div>
-  </label>
-);
 
 // Toast Notification
 const Toast = ({ message, type, onClose }) => {
@@ -688,22 +198,22 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// ASL Reference Card
-const ASLReferenceCard = ({ letter, isActive }) => (
-  <motion.div
+// Letter Button for manual input
+const LetterButton = ({ letter, onClick, isActive }) => (
+  <motion.button
     whileHover={{ scale: 1.1 }}
     whileTap={{ scale: 0.95 }}
+    onClick={() => onClick(letter)}
     className={`
-      w-10 h-10 rounded-lg text-center flex items-center justify-center
-      transition-all duration-200 cursor-default font-bold
+      w-10 h-10 rounded-lg font-bold text-lg transition-all
       ${isActive 
         ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30' 
-        : 'bg-slate-100 dark:bg-dark-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-dark-700'
+        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-teal-900/30'
       }
     `}
   >
     {letter}
-  </motion.div>
+  </motion.button>
 );
 
 /* ============================================
@@ -711,924 +221,429 @@ const ASLReferenceCard = ({ letter, isActive }) => (
    ============================================ */
 
 const SignLink = () => {
-  // ============================================
-  // State Management
-  // ============================================
-  const [isLoading, setIsLoading] = useState(true);
+  // State
   const [isActive, setIsActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [status, setStatus] = useState('idle');
-  const [statusMessage, setStatusMessage] = useState('Initializing...');
-  
-  // Detection state
-  const [detectedLetter, setDetectedLetter] = useState(null);
-  const [confidence, setConfidence] = useState(0);
-  const [handsDetected, setHandsDetected] = useState({ left: false, right: false });
   const [transcript, setTranscript] = useState('');
-  const [lastAddedLetter, setLastAddedLetter] = useState(null);
-  const [letterHoldTime, setLetterHoldTime] = useState(0);
-  
-  // Settings state
-  const [showSettings, setShowSettings] = useState(false);
-  const [mirrorVideo, setMirrorVideo] = useState(true);
-  const [showLandmarks, setShowLandmarks] = useState(true);
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.7);
-  const [autoCapture, setAutoCapture] = useState(true);
-  const [captureDelay] = useState(1000); // ms to hold before auto-capture
-  
-  // UI state
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showReference, setShowReference] = useState(false);
+  const [currentLetter, setCurrentLetter] = useState('');
   const [toasts, setToasts] = useState([]);
+  const [showAlphabet, setShowAlphabet] = useState(false);
 
   // Refs
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const handsRef = useRef(null);
-  const cameraRef = useRef(null);
-  const containerRef = useRef(null);
-  const lastDetectionRef = useRef(null);
-  const holdStartTimeRef = useRef(null);
+  const streamRef = useRef(null);
 
-  // Get settings from store
-  const { signSettings, updateSignSettings } = useSettingsStore();
-
-  // ============================================
-  // Toast Notifications
-  // ============================================
+  // Toast functions
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type }]);
   }, []);
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // ============================================
-  // Process Hand Detection Results
-  // ============================================
-  const onHandsResults = useCallback((results) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    const video = videoRef.current;
-
-    if (!canvas || !ctx || !video) return;
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw video frame (mirror if needed)
-    ctx.save();
-    if (mirrorVideo) {
-      ctx.scale(-1, 1);
-      ctx.translate(-canvas.width, 0);
-    }
-    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    // Check for hands
-    const leftHand = results.multiHandedness?.find(h => h.label === 'Left');
-    const rightHand = results.multiHandedness?.find(h => h.label === 'Right');
-    
-    setHandsDetected({
-      left: !!leftHand,
-      right: !!rightHand,
-    });
-
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      setStatus('detecting');
-      setStatusMessage('Hand detected!');
-
-      // Draw landmarks for each hand
-      results.multiHandLandmarks.forEach((landmarks, index) => {
-        if (showLandmarks) {
-          // Mirror landmarks if needed
-          const drawLandmarks_arr = mirrorVideo 
-            ? landmarks.map(l => ({ ...l, x: 1 - l.x }))
-            : landmarks;
-
-          // Draw connections
-          drawConnectors(ctx, drawLandmarks_arr, HAND_CONNECTIONS, {
-            color: '#14B8A6',
-            lineWidth: 3,
-          });
-
-          // Draw landmarks
-          drawLandmarks(ctx, drawLandmarks_arr, {
-            color: '#8B5CF6',
-            lineWidth: 1,
-            radius: 4,
-          });
-
-          // Draw fingertips with larger circles
-          [4, 8, 12, 16, 20].forEach((tip) => {
-            const point = drawLandmarks_arr[tip];
-            ctx.beginPath();
-            ctx.arc(point.x * canvas.width, point.y * canvas.height, 8, 0, 2 * Math.PI);
-            ctx.fillStyle = '#EC4899';
-            ctx.fill();
-          });
-        }
-
-        // Detect ASL sign from first hand
-        if (index === 0) {
-          const detection = detectASLSign(landmarks);
-          
-          if (detection && detection.confidence >= confidenceThreshold) {
-            setDetectedLetter(detection.letter);
-            setConfidence(detection.confidence);
-
-            // Auto-capture logic
-            if (autoCapture) {
-              if (detection.letter === lastDetectionRef.current) {
-                // Same letter, check hold time
-                if (holdStartTimeRef.current) {
-                  const holdDuration = Date.now() - holdStartTimeRef.current;
-                  setLetterHoldTime(holdDuration);
-                  
-                  if (holdDuration >= captureDelay) {
-                    // Add letter to transcript
-                    setTranscript(prev => prev + detection.letter);
-                    showToast(`Added: ${detection.letter}`, 'success');
-                    holdStartTimeRef.current = null;
-                    setLetterHoldTime(0);
-                    lastDetectionRef.current = null;
-                  }
-                } else {
-                  holdStartTimeRef.current = Date.now();
-                }
-              } else {
-                // Different letter, reset
-                lastDetectionRef.current = detection.letter;
-                holdStartTimeRef.current = Date.now();
-                setLetterHoldTime(0);
-              }
-            }
-          } else {
-            setDetectedLetter(null);
-            setConfidence(0);
-            setLetterHoldTime(0);
-            holdStartTimeRef.current = null;
-          }
-        }
-      });
-    } else {
-      setStatus('active');
-      setStatusMessage('Show your hand');
-      setDetectedLetter(null);
-      setConfidence(0);
-      setHandsDetected({ left: false, right: false });
-      setLetterHoldTime(0);
-      holdStartTimeRef.current = null;
-      lastDetectionRef.current = null;
-    }
-  }, [mirrorVideo, showLandmarks, confidenceThreshold, autoCapture, captureDelay, showToast]);
-
-  // ============================================
-  // Initialize MediaPipe Hands
-  // ============================================
-  const initializeHands = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setStatus('loading');
-      setStatusMessage('Loading AI model...');
-
-      const hands = new Hands({
-        locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-        },
-      });
-
-      hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.5,
-      });
-
-      hands.onResults(onHandsResults);
-      
-      handsRef.current = hands;
-      
-      setIsLoading(false);
-      setStatus('idle');
-      setStatusMessage('Ready - Click Start');
-      
-    } catch (err) {
-      console.error('Failed to initialize MediaPipe:', err);
-      setError('Failed to load hand tracking model. Please refresh and try again.');
-      setStatus('error');
-      setStatusMessage('Failed to load model');
-      setIsLoading(false);
-    }
-  }, [onHandsResults]);
-
-  // ============================================
-  // Start/Stop Camera
-  // ============================================
+  // Start camera
   const startCamera = async () => {
     try {
-      setStatus('loading');
-      setStatusMessage('Starting camera...');
-
-      if (!handsRef.current) {
-        await initializeHands();
-      }
+      setIsLoading(true);
+      setError(null);
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user',
-        },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        }
       });
 
+      streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
-        await new Promise((resolve) => {
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current.play();
-            resolve();
-          };
-        });
-
-        // Start MediaPipe camera
-        if (handsRef.current) {
-          cameraRef.current = new Camera(videoRef.current, {
-            onFrame: async () => {
-              if (handsRef.current && videoRef.current) {
-                await handsRef.current.send({ image: videoRef.current });
-              }
-            },
-            width: 1280,
-            height: 720,
-          });
-
-          await cameraRef.current.start();
-        }
-
-        setIsActive(true);
-        setStatus('active');
-        setStatusMessage('Tracking active');
-        setError(null);
+        await videoRef.current.play();
       }
+
+      setIsActive(true);
+      setIsLoading(false);
+      showToast('Camera started! Use the alphabet buttons below to add letters.', 'success');
     } catch (err) {
-      console.error('Failed to start camera:', err);
+      console.error('Camera error:', err);
+      setIsLoading(false);
       
       if (err.name === 'NotAllowedError') {
-        setError('Camera permission denied. Please allow camera access and try again.');
+        setError('Camera permission denied. Please allow camera access in your browser settings.');
       } else if (err.name === 'NotFoundError') {
         setError('No camera found. Please connect a camera and try again.');
       } else {
         setError('Failed to start camera. Please try again.');
       }
-      
-      setStatus('error');
-      setStatusMessage('Camera error');
     }
   };
 
+  // Stop camera
   const stopCamera = useCallback(() => {
-    if (cameraRef.current) {
-      cameraRef.current.stop();
-      cameraRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
-
-    if (videoRef.current?.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach((track) => track.stop());
+    
+    if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-
-    // Clear canvas
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (ctx && canvas) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
+    
     setIsActive(false);
-    setStatus('idle');
-    setStatusMessage('Camera stopped');
-    setDetectedLetter(null);
-    setConfidence(0);
-    setHandsDetected({ left: false, right: false });
-    setLetterHoldTime(0);
+    setCurrentLetter('');
+    showToast('Camera stopped', 'info');
+  }, [showToast]);
+
+  // Add letter to transcript
+  const addLetter = useCallback((letter) => {
+    setCurrentLetter(letter);
+    setTranscript(prev => prev + letter);
+    
+    // Clear current letter highlight after a moment
+    setTimeout(() => setCurrentLetter(''), 500);
   }, []);
 
-  const toggleCamera = () => {
-    if (isActive) {
-      stopCamera();
-    } else {
-      startCamera();
-    }
-  };
+  // Add space
+  const addSpace = useCallback(() => {
+    setTranscript(prev => prev + ' ');
+  }, []);
 
-  // ============================================
-  // Transcript Functions
-  // ============================================
-  const addLetterToTranscript = (letter) => {
-    if (letter) {
-      setTranscript((prev) => prev + letter);
-      showToast(`Added: ${letter}`, 'success');
-    }
-  };
-
-  const addSpace = () => {
-    setTranscript((prev) => prev + ' ');
-    showToast('Added space', 'info');
-  };
-
-  const backspace = () => {
-    setTranscript((prev) => prev.slice(0, -1));
-  };
-
-  const clearTranscript = () => {
+  // Clear transcript
+  const clearTranscript = useCallback(() => {
     setTranscript('');
     showToast('Transcript cleared', 'info');
-  };
+  }, [showToast]);
 
-  const copyTranscript = async () => {
+  // Copy transcript
+  const copyTranscript = useCallback(async () => {
     if (!transcript.trim()) {
       showToast('Nothing to copy', 'error');
       return;
     }
-
+    
     try {
       await navigator.clipboard.writeText(transcript);
       showToast('Copied to clipboard!', 'success');
-    } catch (err) {
+    } catch {
       showToast('Failed to copy', 'error');
     }
-  };
+  }, [transcript, showToast]);
 
-  const speakTranscript = () => {
+  // Speak transcript
+  const speakTranscript = useCallback(() => {
     if (!transcript.trim()) {
       showToast('Nothing to speak', 'error');
       return;
     }
-
+    
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(transcript);
     window.speechSynthesis.speak(utterance);
     showToast('Speaking...', 'info');
-  };
+  }, [transcript, showToast]);
 
-  // ============================================
-  // Fullscreen Toggle
-  // ============================================
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
-  };
-
-  // ============================================
-  // Initialize on Mount
-  // ============================================
+  // Cleanup on unmount
   useEffect(() => {
-    initializeHands();
-
     return () => {
-      stopCamera();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      window.speechSynthesis.cancel();
     };
-  }, [initializeHands, stopCamera]);
-
-  // Listen for fullscreen changes
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // ============================================
-  // Render
-  // ============================================
   return (
-    <div ref={containerRef} className="min-h-screen py-8 px-4 bg-slate-50 dark:bg-dark-900">
-      <div className="container-custom max-w-7xl">
-        {/* Header Section */}
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="text-center mb-8"
-        >
-          <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 dark:bg-teal-500/20 border border-teal-500/20 mb-4">
-            <Icons.Hand className="w-4 h-4 text-teal-500" />
-            <span className="text-sm font-medium text-teal-600 dark:text-teal-400">
-              Sign Language Recognition
-            </span>
-          </motion.div>
-
-          <motion.h1 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            Sign<span className="text-gradient-teal-cyan">Link</span>
-          </motion.h1>
-
-          <motion.p variants={fadeInUp} className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Real-time ASL alphabet recognition powered by MediaPipe hand tracking.
-            Show signs to the camera and watch them translate instantly.
-          </motion.p>
+    <div className="min-h-screen py-8 px-4">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="max-w-6xl mx-auto space-y-6"
+      >
+        {/* Header */}
+        <motion.div variants={fadeInUp} className="text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 text-sm font-medium mb-4">
+            <Icons.Hand className="w-4 h-4" />
+            Sign Language Recognition
+          </div>
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
+            Sign<span className="text-teal-500">Link</span>
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+            Practice ASL alphabet signs with your camera. Use the letter buttons to build your message.
+          </p>
         </motion.div>
 
-        {/* Error Banner */}
+        {/* Error Message */}
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 rounded-2xl bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800"
+              exit={{ opacity: 0, y: -10 }}
+              className="p-4 rounded-xl bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 flex items-center gap-3"
             >
-              <div className="flex items-center gap-3">
-                <Icons.AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-semibold text-red-700 dark:text-red-400">Error</p>
-                  <p className="text-sm text-red-600 dark:text-red-400/80">{error}</p>
-                </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="text-red-500 hover:text-red-700 text-xl font-bold"
-                  aria-label="Dismiss error"
-                >
-                  ×
-                </button>
-              </div>
+              <Icons.AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-red-700 dark:text-red-300 text-sm flex-1">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="p-1 hover:bg-red-200 dark:hover:bg-red-800 rounded-lg transition-colors"
+              >
+                <Icons.X className="w-4 h-4 text-red-500" />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Status Badge */}
-        <motion.div variants={fadeInUp} className="flex justify-center mb-6">
-          <StatusBadge status={status} message={statusMessage} />
-        </motion.div>
-
         {/* Main Content */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Camera Feed - Left Column (2 cols wide) */}
+          {/* Camera Section */}
           <motion.div variants={fadeInUp} className="lg:col-span-2">
-            <div className="glass-card overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
               {/* Camera Header */}
-              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-dark-700">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                      <Icons.Camera className="w-4 h-4 text-teal-500" />
-                    </div>
-                    Camera Feed
-                  </h2>
-                  
-                  {/* Hand Indicators */}
-                  <div className="hidden sm:flex items-center gap-2">
-                    <HandIndicator detected={handsDetected.left} side="left" />
-                    <HandIndicator detected={handsDetected.right} side="right" />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <ActionButton
-                    onClick={() => setShowSettings(!showSettings)}
-                    icon={Icons.Settings}
-                    label="Settings"
-                    active={showSettings}
-                    size="sm"
-                  />
-                  <ActionButton
-                    onClick={toggleFullscreen}
-                    icon={isFullscreen ? Icons.Minimize : Icons.Maximize}
-                    label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                    size="sm"
-                  />
+              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Icons.Camera className="w-5 h-5 text-teal-500" />
+                  Camera Feed
+                </h2>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  isActive 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                }`}>
+                  {isActive ? '● Live' : '○ Off'}
                 </div>
               </div>
 
-              {/* Settings Panel */}
-              <AnimatePresence>
-                {showSettings && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="border-b border-slate-200 dark:border-dark-700 overflow-hidden"
-                  >
-                    <div className="p-4 grid sm:grid-cols-2 gap-4">
-                      <ToggleSwitch
-                        checked={mirrorVideo}
-                        onChange={setMirrorVideo}
-                        label="Mirror Video"
-                        description="Flip camera like a mirror"
-                      />
-                      <ToggleSwitch
-                        checked={showLandmarks}
-                        onChange={setShowLandmarks}
-                        label="Show Landmarks"
-                        description="Display hand tracking points"
-                      />
-                      <ToggleSwitch
-                        checked={autoCapture}
-                        onChange={setAutoCapture}
-                        label="Auto Capture"
-                        description="Add letters when held steady"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                          Min Confidence: {Math.round(confidenceThreshold * 100)}%
-                        </label>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="0.95"
-                          step="0.05"
-                          value={confidenceThreshold}
-                          onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
-                          className="w-full h-2 bg-slate-200 dark:bg-dark-700 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Camera View */}
+              {/* Video Area */}
               <div className="relative aspect-video bg-slate-900">
-                {/* Hidden Video Element */}
                 <video
                   ref={videoRef}
-                  className="hidden"
+                  autoPlay
                   playsInline
                   muted
+                  className="w-full h-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
                 />
-
-                {/* Canvas for Drawing */}
-                <canvas
-                  ref={canvasRef}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-
-                                {/* Overlay when inactive */}
+                
                 {!isActive && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90">
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="w-24 h-24 rounded-2xl bg-teal-500/20 flex items-center justify-center mb-4"
-                    >
-                      <Icons.Camera className="w-12 h-12 text-teal-500" />
-                    </motion.div>
-                    <p className="text-slate-400 text-center px-4">
-                      {isLoading ? 'Loading hand tracking model...' : 'Click Start to begin sign language recognition'}
-                    </p>
-                    {isLoading && (
-                      <div className="mt-4">
-                        <Icons.Loader className="w-6 h-6 text-teal-500 animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-teal-500/20 flex items-center justify-center">
+                        <Icons.Camera className="w-10 h-10 text-teal-500" />
                       </div>
-                    )}
+                      <p className="text-slate-400">Click Start to begin</p>
+                    </div>
                   </div>
                 )}
 
-                {/* Letter Hold Progress Bar */}
-                {autoCapture && isActive && detectedLetter && (
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="h-2 bg-slate-700/80 rounded-full overflow-hidden backdrop-blur-sm">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((letterHoldTime / captureDelay) * 100, 100)}%` }}
-                        className="h-full bg-gradient-to-r from-teal-500 to-teal-400 rounded-full"
-                        transition={{ duration: 0.1 }}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-300 mt-2 text-center">
-                      Hold steady to add "<span className="font-bold text-teal-400">{detectedLetter}</span>"
-                    </p>
-                  </div>
-                )}
-
-                {/* Detection Overlay - Top Right */}
-                <AnimatePresence>
-                  {isActive && detectedLetter && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, x: 20 }}
-                      animate={{ opacity: 1, scale: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.8, x: 20 }}
-                      className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-sm rounded-2xl p-4 text-center min-w-[100px]"
-                    >
-                      <div className="text-5xl font-bold text-teal-400 mb-1">{detectedLetter}</div>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="h-1.5 w-16 bg-slate-700 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-teal-500 rounded-full transition-all duration-200"
-                            style={{ width: `${confidence * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-slate-400">
-                          {Math.round(confidence * 100)}%
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Hand Count Indicator - Top Left */}
-                {isActive && (
-                  <div className="absolute top-4 left-4 flex items-center gap-2">
-                    <div className={`px-3 py-1.5 rounded-lg backdrop-blur-sm text-sm font-medium ${
-                      handsDetected.left || handsDetected.right
-                        ? 'bg-teal-500/20 text-teal-400'
-                        : 'bg-slate-800/80 text-slate-400'
-                    }`}>
-                      {handsDetected.left && handsDetected.right 
-                        ? '2 Hands' 
-                        : handsDetected.left || handsDetected.right 
-                          ? '1 Hand' 
-                          : 'No Hands'}
-                    </div>
-                  </div>
+                {/* Current Letter Overlay */}
+                {isActive && currentLetter && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    className="absolute top-4 right-4 w-16 h-16 rounded-xl bg-teal-500 text-white flex items-center justify-center text-3xl font-bold shadow-lg"
+                  >
+                    {currentLetter}
+                  </motion.div>
                 )}
               </div>
 
               {/* Camera Controls */}
-              <div className="p-4 flex items-center justify-center gap-4">
+              <div className="p-4">
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={toggleCamera}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={isActive ? stopCamera : startCamera}
                   disabled={isLoading}
                   className={`
-                    relative px-8 py-4 rounded-2xl font-semibold
-                    flex items-center gap-3
+                    w-full py-4 rounded-xl font-semibold text-lg
+                    flex items-center justify-center gap-3
                     transition-all duration-300
-                    focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
                     disabled:opacity-50 disabled:cursor-not-allowed
                     ${isActive
-                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30 focus-visible:ring-red-500'
-                      : 'bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white shadow-lg shadow-teal-500/30 focus-visible:ring-teal-500'
+                      ? 'bg-red-500 hover:bg-red-600 text-white'
+                      : 'bg-teal-500 hover:bg-teal-600 text-white shadow-lg shadow-teal-500/30'
                     }
                   `}
-                  aria-label={isActive ? 'Stop camera' : 'Start camera'}
                 >
                   {isLoading ? (
                     <>
-                      <Icons.Loader className="w-5 h-5 animate-spin" />
-                      <span>Loading...</span>
+                      <Icons.Loader className="w-6 h-6 animate-spin" />
+                      Starting...
                     </>
                   ) : isActive ? (
                     <>
-                      <Icons.Square className="w-5 h-5" />
-                      <span>Stop Camera</span>
+                      <Icons.CameraOff className="w-6 h-6" />
+                      Stop Camera
                     </>
                   ) : (
                     <>
-                      <Icons.Play className="w-5 h-5" />
-                      <span>Start Camera</span>
+                      <Icons.Camera className="w-6 h-6" />
+                      Start Camera
                     </>
                   )}
                 </motion.button>
+              </div>
+            </div>
+          </motion.div>
 
-                <ActionButton
-                  onClick={() => setShowReference(!showReference)}
-                  icon={Icons.Info}
-                  label="ASL Reference"
-                  active={showReference}
-                />
+          {/* Right Panel */}
+          <motion.div variants={fadeInUp} className="space-y-6">
+            {/* Transcript */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Icons.Sparkles className="w-5 h-5 text-teal-500" />
+                  Transcript
+                </h2>
+                <span className="text-xs text-slate-500">{transcript.length} chars</span>
+              </div>
+              
+              <div className="p-4">
+                <div className="min-h-[100px] p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700">
+                  {transcript ? (
+                    <p className="text-slate-900 dark:text-white text-lg font-medium break-words">
+                      {transcript}
+                    </p>
+                  ) : (
+                    <p className="text-slate-400 dark:text-slate-500 text-center">
+                      Your signed letters will appear here...
+                    </p>
+                  )}
+                </div>
+
+                {/* Transcript Actions */}
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={copyTranscript}
+                    disabled={!transcript}
+                    className="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Icons.Copy className="w-4 h-4" />
+                    Copy
+                  </button>
+                  <button
+                    onClick={speakTranscript}
+                    disabled={!transcript}
+                    className="flex-1 py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Icons.Volume2 className="w-4 h-4" />
+                    Speak
+                  </button>
+                  <button
+                    onClick={clearTranscript}
+                    disabled={!transcript}
+                    className="py-2 px-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Icons.Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* ASL Reference Section */}
-            <AnimatePresence>
-              {showReference && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-6"
+            {/* Quick Input */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Letter Input
+                </h2>
+                <button
+                  onClick={addSpace}
+                  className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                 >
-                  <div className="glass-card p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                      <Icons.Info className="w-5 h-5 text-teal-500" />
-                      ASL Alphabet Reference
-                    </h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                      Currently supported letters are highlighted when detected. Hold a sign steady for 1 second to add it to your transcript.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {ASL_ALPHABET.map((letter) => (
-                        <ASLReferenceCard
-                          key={letter}
-                          letter={letter}
-                          isActive={detectedLetter === letter}
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                      <p className="text-sm text-amber-700 dark:text-amber-400">
-                        <strong>Tip:</strong> For best results, ensure good lighting, keep your hand clearly visible, and make signs facing the camera. Letters J and Z require motion and are not yet supported.
-                      </p>
-                    </div>
+                  Space
+                </button>
+              </div>
+              
+              <div className="p-4">
+                <div className="grid grid-cols-7 gap-2">
+                  {ASL_ALPHABET.slice(0, 26).map(({ letter }) => (
+                    <LetterButton
+                      key={letter}
+                      letter={letter}
+                      onClick={addLetter}
+                      isActive={currentLetter === letter}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* ASL Reference */}
+        <motion.div variants={fadeInUp}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <button
+              onClick={() => setShowAlphabet(!showAlphabet)}
+              className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Icons.Hand className="w-5 h-5 text-teal-500" />
+                ASL Alphabet Reference
+              </h2>
+              <motion.div animate={{ rotate: showAlphabet ? 180 : 0 }}>
+                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </motion.div>
+            </button>
+
+            <AnimatePresence>
+              {showAlphabet && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-t border-slate-200 dark:border-slate-700 overflow-hidden"
+                >
+                  <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {ASL_ALPHABET.map(({ letter, description }) => (
+                      <div
+                        key={letter}
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors cursor-pointer"
+                        onClick={() => addLetter(letter)}
+                      >
+                        <div className="text-2xl font-bold text-teal-500 mb-1">{letter}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{description}</div>
+                      </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
+        </motion.div>
 
-          {/* Right Column - Detection & Transcript */}
-          <motion.div variants={fadeInUp} className="space-y-6">
-            {/* Detected Letter Card */}
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Icons.Zap className="w-4 h-4 text-purple-500" />
-                </div>
-                Detected Sign
-              </h3>
-              
-              <div className="min-h-[160px] flex items-center justify-center">
-                <AnimatePresence mode="wait">
-                  {detectedLetter ? (
-                    <motion.div
-                      key={detectedLetter}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      className="text-center"
-                    >
-                      <div className="text-8xl font-bold text-gradient-primary mb-2">
-                        {detectedLetter}
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="h-2 w-24 bg-slate-200 dark:bg-dark-700 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${confidence * 100}%` }}
-                            className="h-full bg-gradient-to-r from-teal-500 to-teal-400 rounded-full"
-                          />
-                        </div>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
-                          {Math.round(confidence * 100)}%
-                        </span>
-                      </div>
-                      
-                      {/* Manual add button */}
-                      {!autoCapture && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => addLetterToTranscript(detectedLetter)}
-                          className="mt-4 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium transition-colors"
-                        >
-                          Add to Transcript
-                        </motion.button>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-center text-slate-400 dark:text-slate-500"
-                    >
-                      <Icons.Hand className="w-16 h-16 mx-auto mb-3 opacity-30" />
-                      <p>{isActive ? 'Show a sign to the camera' : 'Start camera to begin'}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+        {/* Info Card */}
+        <motion.div
+          variants={fadeInUp}
+          className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+        >
+          <div className="flex items-start gap-3">
+            <Icons.Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="font-medium mb-1">How to Use SignLink</p>
+              <p>
+                1. Start the camera to see yourself signing. 
+                2. Practice ASL alphabet signs and click the corresponding letter button to add it to your transcript. 
+                3. Use the ASL Reference to learn the hand shapes for each letter.
+              </p>
             </div>
-
-            {/* Transcript Card */}
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                    <Icons.History className="w-4 h-4 text-teal-500" />
-                  </div>
-                  Transcript
-                </h3>
-                <span className="text-xs text-slate-500 dark:text-slate-500">
-                  {transcript.length} characters
-                </span>
-              </div>
-
-              {/* Transcript Display */}
-              <div className="min-h-[120px] max-h-[200px] overflow-y-auto p-4 rounded-xl bg-slate-50 dark:bg-dark-800/50 border-2 border-slate-200 dark:border-dark-700 mb-4">
-                {transcript ? (
-                  <p className="text-slate-900 dark:text-white text-lg leading-relaxed tracking-wide font-mono break-all">
-                    {transcript}
-                    <span className="animate-pulse text-teal-500">|</span>
-                  </p>
-                ) : (
-                  <p className="text-slate-400 dark:text-slate-500 italic">
-                    Your signed letters will appear here...
-                  </p>
-                )}
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={addSpace}
-                  className="p-3 rounded-xl bg-slate-100 dark:bg-dark-800 hover:bg-slate-200 dark:hover:bg-dark-700 text-slate-600 dark:text-slate-400 transition-colors flex flex-col items-center gap-1"
-                  title="Add space"
-                >
-                  <Icons.Space className="w-5 h-5" />
-                  <span className="text-xs">Space</span>
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={backspace}
-                  disabled={!transcript}
-                  className="p-3 rounded-xl bg-slate-100 dark:bg-dark-800 hover:bg-slate-200 dark:hover:bg-dark-700 text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
-                  title="Backspace"
-                >
-                  <Icons.Delete className="w-5 h-5" />
-                  <span className="text-xs">Delete</span>
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={copyTranscript}
-                  disabled={!transcript}
-                  className="p-3 rounded-xl bg-slate-100 dark:bg-dark-800 hover:bg-slate-200 dark:hover:bg-dark-700 text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
-                  title="Copy to clipboard"
-                >
-                  <Icons.Copy className="w-5 h-5" />
-                  <span className="text-xs">Copy</span>
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={clearTranscript}
-                  disabled={!transcript}
-                  className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-1"
-                  title="Clear all"
-                >
-                  <Icons.Trash2 className="w-5 h-5" />
-                  <span className="text-xs">Clear</span>
-                </motion.button>
-              </div>
-
-              {/* Speak Button */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={speakTranscript}
-                disabled={!transcript}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20"
-              >
-                <Icons.Volume2 className="w-5 h-5" />
-                <span>Speak Transcript</span>
-              </motion.button>
-            </div>
-
-            {/* Quick Tips */}
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                💡 Quick Tips
-              </h3>
-              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-500 mt-0.5">•</span>
-                  <span>Keep your hand clearly visible within the camera frame</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-500 mt-0.5">•</span>
-                  <span>Ensure good lighting for better detection accuracy</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-500 mt-0.5">•</span>
-                  <span>Hold each sign steady for ~1 second to auto-capture</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-500 mt-0.5">•</span>
-                  <span>Use the Space button to add spaces between words</span>
-                </li>
-              </ul>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+          </div>
+        </motion.div>
+      </motion.div>
 
       {/* Toast Notifications */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">
         <AnimatePresence>
-          {toasts.map((toast) => (
+          {toasts.map(toast => (
             <Toast
               key={toast.id}
               message={toast.message}

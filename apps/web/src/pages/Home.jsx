@@ -496,29 +496,29 @@ const Home = () => {
             </motion.p>
 
             {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
-              <Link
-                to="/voice"
-                className="btn-primary btn-lg group"
-              >
-                <span>Start Communicating</span>
-                <Icons.ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <button
-                className="btn-secondary btn-lg group"
-                onClick={() => {
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                <Icons.Play className="w-4 h-4 mr-2" />
-                <span>See How It Works</span>
-              </button>
-            </motion.div>
+<motion.div
+  initial={{ opacity: 0, y: 30 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.8, delay: 0.3 }}
+  className="flex flex-col sm:flex-row items-center justify-center gap-4"
+>
+  <Link
+    to="/voice"
+    className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-base bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 whitespace-nowrap"
+  >
+    <span>Start Communicating</span>
+    <Icons.ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+  </Link>
+  <button
+    className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-base bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 hover:border-purple-500 hover:text-purple-600 dark:hover:border-purple-500 dark:hover:text-purple-400 transition-all duration-300 whitespace-nowrap"
+    onClick={() => {
+      document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+    }}
+  >
+    <Icons.Play className="w-4 h-4" />
+    <span>See How It Works</span>
+  </button>
+</motion.div>
 
             {/* Tech Badges */}
             <motion.div
