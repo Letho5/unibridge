@@ -13,7 +13,6 @@ import Layout from './components/layout/Layout';
 import Profile from './pages/Profile';
 import Home from './pages/Home';
 import VoiceLink from './pages/VoiceLink';
-import Profile from './pages/Profile';
 import SignLink from './pages/SignLink';
 import SoundAlert from './pages/SoundAlert';
 import TextVision from './pages/TextVision';
