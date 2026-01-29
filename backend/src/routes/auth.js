@@ -1,216 +1,233 @@
-import { Router } from 'express';
+import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { z } from 'zod';
-import prisma from '../config/database.js';
-import { authenticate } from '../middleware/authenticate.js';
-import { validate } from '../middleware/validate.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { PrismaClient } from '@prisma/client';
 
-const router = Router();
+const router = express.Router();
+const prisma = new PrismaClient();
 
-// Validation schemas
-const registerSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(100),
-});
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-});
-
-// Generate tokens
-function generateTokens(userId) {
-  const accessToken = jwt.sign(
-    { userId },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
-  );
-
-  const refreshToken = jwt.sign(
-    { userId, type: 'refresh' },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d' }
-  );
-
-  return { accessToken, refreshToken };
-}
+const JWT_SECRET = process.env.JWT_SECRET || 'unibridge-secret-key-change-in-production';
+const JWT_EXPIRES = '7d';
 
 // Register
-router.post('/register', rateLimiter.auth, validate(registerSchema), async (req, res, next) => {
+router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { email, password, name } = req.body;
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      throw new AppError('An account with this email already exists', 409, 'EMAIL_EXISTS');
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Hash password
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user with default preferences
     const user = await prisma.user.create({
       data: {
-        name,
         email,
         passwordHash,
-        preferences: {
-          create: {},
-        },
+        name,
+        settings: {
+          create: {}
+        }
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-      },
+      include: { settings: true }
     });
 
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(user.id);
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
-    // Save refresh token
-    await prisma.refreshToken.create({
+    await prisma.session.create({
       data: {
-        token: refreshToken,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+        token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      }
     });
 
     res.status(201).json({
-      user,
-      accessToken,
-      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        settings: user.settings
+      },
+      token
     });
   } catch (error) {
-    next(error);
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
 // Login
-router.post('/login', rateLimiter.auth, validate(loginSchema), async (req, res, next) => {
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
-    const user = await prisma.user.findUnique({ where: { email } });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { settings: true }
+    });
+
     if (!user) {
-      throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Verify password
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isValid) {
-      throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(user.id);
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
-    // Save refresh token
-    await prisma.refreshToken.create({
+    await prisma.session.create({
       data: {
-        token: refreshToken,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+        token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      }
     });
 
     res.json({
       user: {
         id: user.id,
-        name: user.name,
         email: user.email,
+        name: user.name,
         avatar: user.avatar,
+        settings: user.settings
       },
-      accessToken,
-      refreshToken,
+      token
     });
   } catch (error) {
-    next(error);
-  }
-});
-
-// Refresh token
-router.post('/refresh', async (req, res, next) => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      throw new AppError('Refresh token required', 400, 'TOKEN_REQUIRED');
-    }
-
-    // Verify token
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-
-    // Find token in database
-    const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-    });
-
-    if (!storedToken || storedToken.expiresAt < new Date()) {
-      throw new AppError('Invalid refresh token', 401, 'INVALID_TOKEN');
-    }
-
-    // Delete old token
-    await prisma.refreshToken.delete({ where: { id: storedToken.id } });
-
-    // Generate new tokens
-    const tokens = generateTokens(decoded.userId);
-
-    // Save new refresh token
-    await prisma.refreshToken.create({
-      data: {
-        token: tokens.refreshToken,
-        userId: decoded.userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    res.json(tokens);
-  } catch (error) {
-    next(error);
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
 // Logout
-router.post('/logout', authenticate, async (req, res, next) => {
+router.post('/logout', async (req, res) => {
   try {
-    // Delete all refresh tokens for user
-    await prisma.refreshToken.deleteMany({
-      where: { userId: req.user.id },
-    });
-
-    res.json({ message: 'Logged out successfully' });
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (token) {
+      await prisma.session.deleteMany({ where: { token } });
+    }
+    res.json({ message: 'Logged out' });
   } catch (error) {
-    next(error);
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
 // Get current user
-router.get('/me', authenticate, async (req, res, next) => {
+router.get('/me', async (req, res) => {
   try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        createdAt: true,
-        preferences: true,
-      },
+      where: { id: decoded.userId },
+      include: { settings: true }
     });
 
-    res.json(user);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      settings: user.settings
+    });
   } catch (error) {
-    next(error);
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Update profile
+router.put('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { name, avatar } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { name, avatar },
+      include: { settings: true }
+    });
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      settings: user.settings
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
+
+// Update settings
+router.put('/settings', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { theme, voiceSpeed, voicePitch, soundAlerts, vibration, highContrast, largeText } = req.body;
+
+    const settings = await prisma.settings.upsert({
+      where: { userId: decoded.userId },
+      update: { theme, voiceSpeed, voicePitch, soundAlerts, vibration, highContrast, largeText },
+      create: {
+        userId: decoded.userId,
+        theme, voiceSpeed, voicePitch, soundAlerts, vibration, highContrast, largeText
+      }
+    });
+
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: 'Settings update failed' });
+  }
+});
+
+// Delete account
+router.delete('/account', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    await prisma.user.delete({ where: { id: decoded.userId } });
+
+    res.json({ message: 'Account deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Delete failed' });
   }
 });
 

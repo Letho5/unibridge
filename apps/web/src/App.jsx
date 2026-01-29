@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Layout from './components/layout/Layout';
 
 // Pages
+import Profile from './pages/Profile';
 import Home from './pages/Home';
 import VoiceLink from './pages/VoiceLink';
 import SignLink from './pages/SignLink';
@@ -139,6 +140,7 @@ const App = () => {
               </AnimatedPage>
             }
           />
+          <Route path="profile" element={<Profile />} />
 
           {/* SignLink - Sign Language Recognition */}
           <Route
