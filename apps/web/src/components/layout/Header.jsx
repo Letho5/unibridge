@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSettingsStore from '../../stores/settingsStore';
+import { Menu, X, Mic, Hand, Bell, FileText, Settings, Sun, Moon, User } from 'lucide-react';
 
 /* ============================================
    🎨 ICON COMPONENTS
@@ -402,6 +403,7 @@ const Header = () => {
 
   // Navigation items
   const navItems = [
+    { name: 'Profile', path: '/profile', icon: User },
     { to: '/', icon: Icons.Home, label: 'Home', color: 'purple' },
     { to: '/voice', icon: Icons.Microphone, label: 'VoiceLink', color: 'purple' },
     { to: '/sign', icon: Icons.Hand, label: 'SignLink', color: 'teal' },

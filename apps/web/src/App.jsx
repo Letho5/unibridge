@@ -12,6 +12,7 @@ import Layout from './components/layout/Layout';
 // Pages
 import Home from './pages/Home';
 import VoiceLink from './pages/VoiceLink';
+import Profile from './pages/Profile';
 import SignLink from './pages/SignLink';
 import SoundAlert from './pages/SoundAlert';
 import TextVision from './pages/TextVision';
@@ -129,6 +130,7 @@ const App = () => {
               </AnimatedPage>
             }
           />
+          <Route path="profile" element={<Profile />} />
 
           {/* VoiceLink - Speech to Text & Text to Speech */}
           <Route
